@@ -36,9 +36,11 @@ def frame_difference(videofile_name):
         previous_frame_gray = cv2.cvtColor(previous_frame, cv2.COLOR_BGR2GRAY)
 
         frame_diff = cv2.absdiff(current_frame_gray, previous_frame_gray)
-
         if np.linalg.norm(frame_diff) > threshold:
             cv2.imshow('frame diff ', previous_frame)
+            frame_timestamp = int(vidcap.get(cv2.CAP_PROP_POS_MSEC))
+            frame_timestamp = '{}:{}'.format(int(frame_timestamp / 60000), int(frame_timestamp / 1000))
+            print(frame_timestamp)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
