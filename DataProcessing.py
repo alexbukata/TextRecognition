@@ -15,7 +15,7 @@ def read_labels():
     # train_data = list(map(cv2.imread, train_data))
     with(open(train_labels_path, 'r', encoding='UTF-8')) as train_labels_file:
         reader = csv.reader(train_labels_file, delimiter='~')
-        reader = [a for index, a in enumerate(reader) if index < 10000]
+        reader = [a for index, a in enumerate(reader) if index < 5000]
         train_labels = dict(reader)
     return train_labels
 

@@ -1,48 +1,47 @@
-import cv2
-import numpy as np
-from keras.optimizers import SGD
-from keras.models import load_model
-import CustomZeroPadding
+import itertools
 
-import DataProcessing
-import NetworkModel
+import cv2
+import keras.backend as K
+import numpy as np
+import tensorflow as tf
+from keras.models import load_model
+
+output_str = '0123456789abcdefghijklmnopqrstuvwxyz '  # space was the last
+output = [x for x in output_str]
+
+def preprocess(img):
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img = cv2.resize(img, (128, 64))
+    img = img.astype(np.float32)
+    img /= 255
+    result = np.zeros((1, 64, 128))
+    result[0, :, :] = img
+    return np.expand_dims(result.T, 0)
+
+
+def decode_word(out):
+    out_best = list(np.argmax(out[2:], 1))
+    out_best = [k for k, g in itertools.groupby(out_best)]
+    outstr = ''
+    for c in out_best:
+        if c < len(output):
+            outstr += output[c]
+    return outstr
+
 
 if __name__ == '__main__':
-    # load data
-    train_labels_map = DataProcessing.read_labels()
-    train_images, train_labels = DataProcessing.read_images(train_labels_map)
-    train_images = DataProcessing.preprocess_images(train_images)
+    sess = tf.Session()
+    K.set_session(sess)
 
-    # build model
-    max_height = 60
-    max_width = 100
-    input_shape = (1, max_height, max_width)
-    max_length = 33
-    alphabet_length = 37
+    model = load_model("./model/awesome_model.hdf")
 
-    # train network
-    network_train_output = DataProcessing.words_to_matrix(np.array(train_labels), max_length, alphabet_length)
-    network_train_images = train_images.reshape(train_images.shape[0], 1, max_height, max_width)
-    want_load = False
-    if want_load:
-        model = load_model("D:\\my_model.hdf5")
-    else:
-        model = NetworkModel.build_model(input_shape, max_length, alphabet_length)
-        sgd = SGD(lr=0.1, decay=1e-6, momentum=0.9, nesterov=True)
-        model.compile(loss='categorical_crossentropy', optimizer=sgd)
-        model.fit(network_train_images, network_train_output, batch_size=4, epochs=2, verbose=1)
-        model.save("D:\\my_model.hdf5")
+    net_inp = model.get_layer(name='the_input').input
+    net_out = model.get_layer(name='softmax').output
 
-    predict_result = model.predict(network_train_images[0].reshape(1, 1, 60, 100))
-    print(predict_result)
-    answer_r = predict_result.reshape(33, 37)
-    chars = []
-    output_str = ' 0123456789abcdefghijklmnopqrstuvwxyz'  # space was the last
-    output = [x for x in output_str]
-    for row in answer_r:
-        chars.append(output[np.argmax(row)])
-    print(''.join(chars))
-    print("Reading done")
-    print(train_labels[0])
-    cv2.imshow("1", train_images[4])
-    cv2.waitKey(0)
+    # image = cv2.imread("./images/Chevron.jpg")
+    image = cv2.imread("./images/461_austins_4907.jpg")
+    processed_image = preprocess(image)
+
+    net_out_value = sess.run(net_out, feed_dict={net_inp: processed_image})
+
+    print(decode_word(net_out_value[0]))
